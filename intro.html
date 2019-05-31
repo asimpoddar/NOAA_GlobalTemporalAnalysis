@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<head>
+  <h1>Global Temperature Analysis</h1>
+    <br>
+    <style>
+      body{
+        background: lightgray;
+      }
+        #tooltip {
+            text-align: left;
+            padding: 5px;
+            background-color: white;
+            border: 1px solid black;
+            width: auto;
+            opacity: 0;
+            color: black;
+            position: absolute;
+        }
+
+        .button {
+              border: none;
+              color: white;
+              padding: 16px 32px;
+              text-align: center;
+              text-decoration: none;
+              display: inline-block;
+              font-size: 16px;
+              margin: 4px 2px;
+              -webkit-transition-duration: 0.4s; /* Safari */
+              transition-duration: 0.4s;
+              cursor: pointer;
+            }
+
+            .button1 {
+              background-color: white; 
+              color: black; 
+              border: 2px solid black;
+            }
+
+            .button1:hover {
+              background-color: #D3D3D3;
+              color: white;
+            }
+    </style>
+
+
+
+
+  <meta charset="utf-8">
+  <div id = "tooltip">
+        Name: <span id = "name" class = "info"></span> <br>
+        Country: <span id = "country" class = "info"></span> <br>
+        Latitude: <span id = "lat" class = "info"></span> <br>
+        Longitude: <span id = "lon" class = "info"></span> <br>
+        Elevation: <span id = "elev" class = "info"></span> <br>
+        Installation Date: <span id = "begin" class = "info"></span> <br>  
+        Decommission Date: <span id = "end" class = "info"></span> <br>
+      
+  
+  
+    </div>
+
+  <label for="year" 
+         style="display: inline-block; text-align: right">
+          Year Selected: <span id="year-value">…</span>
+  </label>
+
+  <label for="minelevationlvls" 
+          style="display: inline-block; text-align: right">
+          Elevation Level: <span id="elev-value">…</span>
+  </label>
+  <label for="maxelevationlvls" 
+          style="display: inline-block; text-align: right">
+          Elevation Level: <span id="elev-value1">…</span>
+  </label>
+
+  <div id="soda_franchise_map"></div>
+
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <style>
+    body { margin:0;position:fixed;top:0;right:0;bottom:0;left:0; }
+  </style>
+</head>
+
+<body>
+  <script>
+   var config  = {},
+		width   = 0,
+		height  = 0,
+		margins = {};
+
+config.div_id = "soda_franchise_map",
+config.map_shift_horizontal = 2,
+config.map_shift_vertical = 2,
+
+
+d3.queue()
+	.defer(d3.json, "https://unpkg.com/world-atlas@1/world/110m.json")
+	.defer(d3.csv, "stations1.csv")
+	.awaitAll(render_map);
+
+
+// Load world map topojson
+function render_map(error, result_data){
+	if (error) { console.error(error) };
+
+	var topology  = result_data[0],
+			locations = result_data[1];
+  
+  var id = 0
+  
+  locations.forEach(function(d){
+    d.id = id
+    id = id + 1
+  })
+
+	// Get target element's width and use aspect ratio to set height
+	width  = document.getElementById(config.div_id).clientWidth,
+	height = width * (2/3),
+	// Set margins around rendered map
+	margins.top    = 0,
+	margins.bottom = 0,
+	margins.left   = 0,
+	margins.right  = 0;
+
+    var projection = d3.geoMercator()
+	// Geo-paths take a GeoJSON geometry/feature object and generate an SVG path data string or render the path to a Canvas
+	var path = d3.geoPath().projection(projection);
+    
+	// Filter through all states to isolate selected states
+	topology["features"] = topology["features"]
+
+	var min_year = 1926;
+			max_year = 2019;
+      maxelev = 8318;
+      minelev = -38;
+	
+	// Select target element
+  var svg = d3.select("#"+config.div_id)
+  var formatDateIntoYear = d3.timeFormat("%Y");
+
+  // Slider
+  svg.append("input")
+				.attr("type", "range")
+				.attr("min", min_year)
+				.attr("max", max_year)
+				.attr("step", "1")
+				.attr("id", "year")
+				.on("input", function input() {
+					update();
+				})
+        //Attempt to add date output to slider
+        .selectAll("text")
+           // .data(ticks(10))
+            .enter()
+            .append("text")
+            .text(function(d) { return formatDateIntoYear(d); });
+            //not outputting date^^^
+    
+  svg.append("input")
+				.attr("type", "range")
+        .attr("transform", "translate(" + 30 + "," + 100 / 2 + ")")
+				.attr("min", minelev)
+				.attr("max", maxelev)
+        .attr("value",minelev)
+				.attr("step", "1")
+				.attr("id", "minelevationlvls")
+				.on("input", function input() {
+					update();
+				})
+        //Attempt to add date output to slider
+        .selectAll("text")
+           // .data(ticks(10))
+            .enter()
+            .append("text")
+            .text(function(d) { return d; });
+
+  svg.append("input")
+				.attr("type", "range")
+        .attr("transform", "translate(" + 100 + "," + 100 / 2 + ")")
+				.attr("min", minelev)
+				.attr("max", maxelev)
+        .attr("value",maxelev)
+				.attr("step", "1")
+				.attr("id", "maxelevationlvls")
+				.on("input", function input() {
+					update();
+				})
+        //Attempt to add date output to slider
+        .selectAll("text")
+           // .data(ticks(10))
+            .enter()
+            .append("text")
+            .text(function(d) { return d; });
+ 
+ 
+  svg.append("input")
+        .attr("type", "button")
+        .attr("value", "Play")
+        .on("click",
+        function myFunc(){
+            //var clicked = false; // attempt to pause
+            console.log("clicked");
+            var first = 1926;
+            /*
+            if(clicked)
+              { 
+                clearTimeout(runPlay());
+                document.getElementById("year").value = 1926;
+                update();
+                clicked = false;
+              }
+              else
+              {
+                */
+            function runplay(){
+              setTimeout(function (){
+                first = first + 1;
+                document.getElementById("year").value = first;
+                update();
+                clicked = true;
+                if (first < 2019) {            //  if the counter < 10, call the loop function
+                  runplay();             //  ..  again which will trigger another 
+                }             
+
+              },500)
+            }
+          //} //for the clearTimeout
+            
+            runplay();
+        
+           } )
+
+
+  // Select target element and attach <svg> and <g> elements
+	var svg = d3.select("#"+config.div_id)
+		.append("svg")
+			// Set SVG element's top left corner and width/height attributes
+			.attr("viewBox",margins.top+" "+margins.left+" "+(width-margins.right)+" "+(height-margins.bottom))
+			// Supposed to make map responsive. Works sometimes.
+			.attr("preserveAspectRatio", "xMidYMid meet")
+			// Group together map paths and location markers	
+		.append('g')
+			.attr('class', config.div_id+"_group");
+	
+	// Group together country shape paths and enter dat
+	// Group together location markers
+	var loc = svg.append("g").attr("class", config.div_id+"_locations");
+
+	// Variables for reuse
+	var lon = "lon",
+			lat = "lat";
+
+  var heatcolors = d3.scaleQuantize()
+    .domain([-10,110])
+    .range([ "#0000b3","#21618C", "#3498DB", "#add8e6", "#E6F598", 
+    "#FFFFBF", "#FEE08B", "#FDAE61", "#F46D43", "#D53E4F", "#9E0142"]);
+
+  var changeradii = d3.scaleQuantize()
+    .domain([0,15])
+    .range([0,1,2,3]);
+
+
+
+var moving = false;
+//var currentValue = 1926;
+var targetValue = 2019;
+
+var playButton = d3.select("#play-button");
+
+	function update(){
+
+
+		var slider_year = document.getElementById("year").value;
+    var slider_elev = document.getElementById("minelevationlvls").value;
+    var slider_elev1 = document.getElementById("maxelevationlvls").value;
+    var elevationparam = [slider_elev,slider_elev1];
+    var minelevslider = Math.min(...elevationparam);
+    var maxelevslider = Math.max(...elevationparam);
+
+    var syear = slider_year;
+
+    var earlyyear = slider_year - 1;
+
+    var colyear = "Year"+syear;
+
+    var earlycolyear = "Year"+earlyyear;
+
+        //d3.select("#year").property("value",slider_year); //trial to get output of slider
+    d3.select("#year-value").text(slider_year);
+    d3.select("#elev-value").text(slider_elev);
+    d3.select("#elev-value1").text(slider_elev1);
+		var new_loc = locations.filter(
+      function filter_by_year(d)
+      { if (d["end"]/10000 >= slider_year && d["begin"]/10000 <= slider_year 
+                                          && ((d["elev"]>= minelevslider && d["elev"]<= maxelevslider) || d["elev"]< (-38)))
+      { return true; } });
+    
+        console.log(new_loc)
+
+		// Render and style circle location marker for each observation in reviews dataset
+		var circles = loc.selectAll("circle")
+    
+        var join = circles.data(new_loc, function(d){ return d.id })
+        
+        var enter = join.enter()
+        var exit = join.exit()
+
+			 enter.append("circle")
+			 	 .attr("class", config.div_id+"_location_markers")
+				 .attr("cx", function(d) { return projection([d[lon], d[lat]])[0]; })
+				 .attr("cy", function(d) { return projection([d[lon], d[lat]])[1]; })
+				 .attr("r", function(d){    if (slider_year == 1926)
+                                   { 
+                                     return 2;
+                                   } else if(d[earlycolyear]== "")
+                                    { 
+                                     return 2;
+                                    } else
+                                    {
+                                      return changeradii(Math.abs(d[earlycolyear] - d[colyear])) + 2;
+                                    }
+                                    
+                                })
+				 .style("fill", function(d) {  if (slider_year == 1926)
+                                        { 
+                                          return heatcolors(48);
+                                        } else if (d[colyear] == "")
+                                        {
+                                          return heatcolors(48);
+                                        } else 
+                                        {
+                                          return heatcolors(d[colyear]);
+                                        }
+                                    })
+         .style("opacity", 0.75)
+         .style("stroke", function(d) {  if (slider_year == 1926)
+                                        { 
+                                          return heatcolors(48);
+                                        } else if (d[colyear] == "")
+                                        {
+                                          return heatcolors(48);
+                                        } else 
+                                        {
+                                          return heatcolors(d[colyear]);
+                                        }
+                                    })
+           .style("stroke-width",.5)
+
+                 .on('mouseover', function(d) {
+
+                    d3.select(this).style('fill', 'black')
+                        .attr("r", 5);
+                    d3.select('#tooltip').style("visibility", "visible");
+                    d3.select('#name').text(d.name);
+                    d3.select('#country').text(d.country);
+                    d3.select('#lat').text(d.lat);
+                    d3.select('#lon').text(d.lon);
+                    d3.select('#elev').text(d.elev);
+                    d3.select('#begin').text(d.begin);
+                    d3.select('#end').text(d.end);
+                    d3.select('#tooltip')
+                        .style('left', (d3.event.pageX + 20) + 'px')
+                        .style('top', (d3.event.pageY - 80) + 'px')
+                        .style('display', 'block')
+                        .style('opacity', 0.8)
+                    })
+                .on('mouseout', function(d) {
+                    //d3.select('#tooltip').attr("hidden",true);
+                    d3.select(this).style('fill', function(d) {  if (slider_year == 1926)
+                                                                  { 
+                                                                    return heatcolors(48);
+                                                                  } else if (d[colyear] == "")
+                                                                  {
+                                                                    return heatcolors(48);
+                                                                  } else 
+                                                                  {
+                                                                    return heatcolors(d[colyear]);
+                                                                  }
+                                                              })
+                        .attr("r",function(d){    if (slider_year == 1926)
+                                   { 
+                                     return 2;
+                                   } else if(d[earlycolyear]== "")
+                                    { 
+                                     return 2;
+                                    } else
+                                    {
+                                      return changeradii(Math.abs(d[earlycolyear] - d[colyear])) + 2;
+                                    }
+                                    
+                                })
+                        
+                        .style("opacity", 0.75)
+                        .style("stroke", function(d) {  if (slider_year == 1926)
+                                        { 
+                                          return heatcolors(48);
+                                        } else if (d[colyear] == "")
+                                        {
+                                          return heatcolors(48);
+                                        } else 
+                                        {
+                                          return heatcolors(d[colyear]);
+                                        }
+                                    })
+                        d3.select('#tooltip').style("visibility", "hidden");
+                })
+
+
+		exit.remove();
+	}
+	update();
+
+}; 
+
+// Close d3.json("https://d3js.org/us-10m.v1.json", function render_map(topology){
+  </script>
+</body>
